@@ -1,24 +1,35 @@
 import pygame
 from random import randint
+from math import sin, cos, atan2, degrees, pi
 
-size = (400,650)
-height = size[1]
+# Constants
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 650
+SCREEN_SIZE = (400,650)
 
-# hp_images_list = ['assets/hp/hp1.png','assets/hp/hp2.png','assets/hp/hp3.png','assets/hp/hp4.png','assets/hp/hp5.png','assets/hp/hp6.png','assets/hp/hp7.png','assets/hp/hp8.png','assets/hp/hp9.png','assets/hp/hp10.png','assets/hp/hp11.png']
-hp_images_list = ['assets/hp/hp'+ str(n) +'.png' for n in range(1,12)]
-
-exp_image_list = ['assets/exp/exp0'+ str(n) + '.png' for n in range(9)]
-
-window = pygame.display.set_mode(size)
-
+SCORE = 0
+FPS = 30
 
 def load_image(image, size):
 		return pygame.transform.scale(pygame.image.load(image), size)
 
-# Background Image
-bg = load_image('assets/bg.jpg',size)
+# Image source lists
+hp_images_list = [f'assets/hp/hp{n}.png' for n in range(1,12)]
+exp_image_list = [f'assets/exp/exp0{n}.png' for n in range(9)]
 
-# HP Image
+# Init Functions
+pygame.display.set_caption('Star Wars')
+window = pygame.display.set_mode(SCREEN_SIZE)
+clock = pygame.time.Clock()
+
+# Font
+pygame.font.init()
+font = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 24)
+health = font.render("Health:", True, (255, 255, 255))
+score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
+
+# Loading Base Images
+bg = load_image('assets/bg.jpg',SCREEN_SIZE)
 hp_image = load_image('assets/hp/hp1.png',(100,30))
 
 
@@ -30,9 +41,6 @@ pygame.mixer.music.play()
 sound = pygame.mixer.Sound('assets/sound.mp3')
 blaster_sound = pygame.mixer.Sound('assets/blaster.mp3')
 exp_sound = pygame.mixer.Sound('assets/explosion.mp3')
-
-
-clock = pygame.time.Clock()
 
 
 class GameSprite(pygame.sprite.Sprite):
@@ -53,32 +61,71 @@ class GameSprite(pygame.sprite.Sprite):
 	def show(self):
 		window.blit(self.image, (self.rect.x,self.rect.y))
 
-class Enemy(GameSprite):
-	def update(self):
-		self.rect.y += self.speed
-
-		if self.rect.y > height:
-			self.kill()
-	def fire(self):
-		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 25, 100, 10)
-
-		enemy_bullets.add(bullet)
-
-
 class Bullet(GameSprite):
 	def update(self):
 		self.rect.y -= self.speed
 
 		if self.rect.y < 0:
 			self.kill()
-class DownBullet(GameSprite):
-	def update(self):
-		self.rect.y += self.speed
 
-		if self.rect.y > height:
+class LeftBullet(GameSprite):
+	sign = -1
+	angle = 120
+	def update(self):
+		self.rect.y -= self.speed * sin(self.angle)
+		self.rect.x += (self.speed * cos(self.angle)) * self.sign
+
+		if self.rect.x >= SCREEN_WIDTH:
+			self.sign = -1
+
+		if self.rect.x <= 0:
+			self.sign = 1
+
+		if self.rect.y <= 0:
 			self.kill()
 
-class Hero(GameSprite):
+class RightBullet(GameSprite):
+	sign = 1
+	angle = 120
+	def update(self):
+		self.rect.y -= self.speed * sin(self.angle)
+		self.rect.x += (self.speed * cos(self.angle)) * self.sign
+
+		if self.rect.x >= SCREEN_WIDTH:
+			self.sign = -1
+
+		if self.rect.x <= 0:
+			self.sign = 1
+
+		if self.rect.y <= 0:
+			self.kill()
+
+class DownBullet(GameSprite):
+	def __init__(self, no_move_image, x, y, width, height, speed, target_x, target_y):
+		super().__init__(no_move_image, x, y, width, height, speed)
+		angle = atan2(target_y - y, target_x - x)
+		self.target_x = cos(angle) * self.speed
+		self.target_y = sin(angle) * self.speed
+
+	def update(self):
+		self.rect.y += self.target_y
+		self.rect.x += self.target_x
+
+		if self.rect.y > SCREEN_HEIGHT:
+			self.kill()
+
+	def calc_angle(self, x, y, target_x, target_y):
+		dy = target_y - y
+		dx = target_x - x
+
+		rad = atan2(-dy, dx)
+		rad = rad % (2*pi)
+
+		angle = degrees(rad)
+
+		return angle 
+	
+class Player(GameSprite):
 	def __init__(self, no_move_image, move_image, x, y, width, height, speed):
 		super().__init__(no_move_image, x, y, width, height, speed)
 
@@ -88,16 +135,21 @@ class Hero(GameSprite):
 	def move(self):
 		keys = pygame.key.get_pressed()
 		
-		if keys[pygame.K_LEFT] and self.rect.x > -10:
+		is_left = keys[pygame.K_LEFT] or keys[pygame.K_a]
+		is_right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+		is_up = keys[pygame.K_UP] or keys[pygame.K_w]
+		is_down = keys[pygame.K_DOWN] or keys[pygame.K_s]
+
+		if is_left and self.rect.x > -10:
 			self.rect.x -= self.speed
 
-		elif keys[pygame.K_RIGHT] and self.rect.x < 350:
+		elif is_right and self.rect.x < 350:
 			self.rect.x += self.speed
 
-		elif keys[pygame.K_DOWN] and self.rect.y < 500:
+		elif is_down and self.rect.y < 500:
 			self.rect.y += self.speed
 
-		elif keys[pygame.K_UP] and self.rect.y > -10:
+		elif is_up and self.rect.y > -10:
 			sound.play()
 			self.image = self.move_image
 			self.rect.y -= self.speed
@@ -109,21 +161,35 @@ class Hero(GameSprite):
 	def fire(self):
 		blaster_sound.play()
 		
-		bullet = Bullet('assets/laser.png',hero.rect.centerx - 15,hero.rect.y - 70, 25, 100, 15)
-		bullet_left = Bullet('assets/laser1.png',hero.rect.centerx - 45,hero.rect.y - 5, 25, 70, 15)
-		bullet_right = Bullet('assets/laser1.png',hero.rect.centerx + 15,hero.rect.y - 5, 25, 70, 15)
+		bullet = Bullet('assets/laser.png',player.rect.centerx - 15,player.rect.y - 70, 25, 100, 15)
+		bullet_left = LeftBullet('assets/laser1.png',player.rect.centerx - 45,player.rect.y - 5, 25, 70, 15)
+		bullet_right = RightBullet('assets/laser1.png',player.rect.centerx + 15,player.rect.y - 5, 25, 70, 15)
 		
 		bullets.add(bullet)
 		bullets.add(bullet_left)
 		bullets.add(bullet_right)
 
-hero = Hero('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 5)
+class Enemy(GameSprite):
+	def update(self):
+		self.rect.y += self.speed
+
+		if self.rect.y > SCREEN_HEIGHT:
+			self.kill()
+	def fire(self):
+		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 20, 20, 18,  player.rect.centerx + 20, player.rect.centery)
+		enemy_bullets.add(bullet)
+
+		angle = bullet.calc_angle(bullet.rect.x, bullet.rect.y, player.rect.centerx + 20, player.rect.centery)
+		bullet = pygame.transform.rotate(bullet.image, angle)
+
+
+player = Player('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 10)
 enemies = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 
 y1 = 0
-y2 = -height
+y2 = -SCREEN_HEIGHT
 i,j = 0,0
 
 game = True
@@ -135,13 +201,13 @@ while game:
 	window.blit(bg,(0,y1))
 	window.blit(bg,(0,y2))
 
-	if y1 > height:
-		y1 = -height
-	if y2 > height:
-		y2 = -height
+	if y1 > SCREEN_HEIGHT:
+		y1 = -SCREEN_HEIGHT
+	if y2 > SCREEN_HEIGHT:
+		y2 = -SCREEN_HEIGHT
 
-	hero.show()
-	hero.move()
+	player.show()
+	player.move()
 
 	bullets.draw(window)
 	bullets.update()
@@ -155,12 +221,14 @@ while game:
 	enemy_bullets.update()
 
 
-	window.blit(hp_image,(5,10))
+	window.blit(hp_image,(5,15))
+	window.blit(health, (10, 0))
+	window.blit(score, (SCREEN_SIZE[0] - 120, 0))
 
 
 	if i == 0:
-		i = 18
-		enemy = Enemy('assets/enemy.png', randint(0,7) * 100, -50, 100, 100, randint(2,3))
+		i = 5
+		enemy = Enemy('assets/enemy.png', randint(0,3) * 100, -50, 100, 100, randint(5,6))
 		enemy.fire()
 		enemies.add(enemy)
 	else:
@@ -168,7 +236,7 @@ while game:
 
 	if j == 0:
 		for e in enemies:
-			j = 80 
+			j = 40
 			e.fire()
 	else:
 		j -= 1
@@ -179,36 +247,54 @@ while game:
 	for event in events:
 		if event.type == pygame.QUIT:
 			game = False
+			pygame.quit()
+			quit()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_SPACE:
-				hero.fire()
+				player.fire()
 			if event.key == pygame.K_ESCAPE:
 				exit()
 		if event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
-			hero.fire()
+			player.fire()
 
 	collides = pygame.sprite.groupcollide(bullets,enemies, True, True)
 	for c in collides:
 		exp_sound.play()
+
+		SCORE += 1
+		score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
+
 		e = 0
 		for i in range(9):
 			if e == 0:
-				e = 60
+				e = 50
 				c.image = load_image(exp_image_list[i],(100,100))
-				window.blit(c.image, (c.rect.x, c.rect.y))
+				window.blit(c.image, (c.rect.x , c.rect.y))
 			else:
 				e -= 1
 
 	pygame.sprite.groupcollide(bullets, enemy_bullets, True, True)
 
-	if pygame.sprite.spritecollide(hero, enemies, True) or pygame.sprite.spritecollide(hero,enemy_bullets, True):
-		if hero.hp == 0:
-			hero.hp = 10
-		else:
-			hero.hp -= 1 
 
-		hp_image = load_image(hp_images_list[10 - hero.hp],(100,30))
+	if pygame.sprite.spritecollide(player, enemies, True) or pygame.sprite.spritecollide(player, enemy_bullets, True):
+		exp_sound.play()
+		e = 0
+		for i in range(9):
+			if e == 0:
+				e = 50
+				enemy_bullets.image = load_image(exp_image_list[i],(100,100))
+				window.blit(enemy_bullets.image, (player.rect.x + 30, player.rect.y))
+			else:
+				e -= 1
+
+		if player.hp == 0:
+			player.hp = 10
+		else:
+			player.hp -= 1 
+
+		hp_image = load_image(hp_images_list[10 - player.hp],(100,30))
+		
 	
 
-	clock.tick(60)
+	clock.tick(FPS)
 	pygame.display.update()
