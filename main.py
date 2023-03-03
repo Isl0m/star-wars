@@ -12,6 +12,7 @@ SCORE = 0
 FPS = 30
 
 IS_FINISH = False
+IS_STOP = False
 
 
 # Image source lists
@@ -27,11 +28,11 @@ clock = pygame.time.Clock()
 pygame.font.init()
 font = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 24)
 health = font.render("Health:", True, (255, 255, 255))
-score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
-reload_text = font.render("Reloading...",False, (255, 255, 255))
-you_win_text = font.render("You Win!!!",False, (255, 255, 255))
-you_lose_text = font.render("You Lose",False, (255, 255, 255))
-range_mode_text = font.render("Range Mode!!!", False, (255, 0, 0))
+score = font.render(f"Score: {SCORE}",True, (255, 255, 255))
+reload_text = font.render("Reloading...",True, (255, 255, 255))
+you_win_text = font.render("You Win!!!",True, (255, 255, 0))
+you_lose_text = font.render("You Lose",True, (255, 0, 0))
+range_mode_text = font.render("Range Mode!!!", True, (255, 0, 0))
 
 # Functions
 def load_image(image, size):
@@ -58,7 +59,6 @@ def you_win():
 	window.fill('black')
 	window.blit(you_win_text, calc_text_pos(you_win_text.get_size()))
 	window.blit(score, calc_text_pos(score.get_size(), 30))
-
 def you_lose():
 	window.fill('black')
 	window.blit(you_lose_text, calc_text_pos(you_lose_text.get_size()))
@@ -78,7 +78,12 @@ pygame.mixer.music.play()
 sound = pygame.mixer.Sound('assets/sound.mp3')
 blaster_sound = pygame.mixer.Sound('assets/blaster.mp3')
 exp_sound = pygame.mixer.Sound('assets/explosion.mp3')
+all_sounds = [sound,blaster_sound,exp_sound]
 
+def stop_sounds():
+	for sound in all_sounds:
+		sound.stop()
+	pygame.mixer.music.stop()
 
 class GameSprite(pygame.sprite.Sprite):
 	def __init__(self, no_move_image, x, y, width, height, speed):
@@ -209,7 +214,6 @@ class Player(GameSprite):
 		range_bullet_left.image = pygame.transform.rotate(range_bullet_left.image, 30)
 		range_bullet_right.image = pygame.transform.rotate(range_bullet_right.image, -30)
 		
-
 class Enemy(GameSprite):
 	def update(self):
 		self.rect.y += self.speed
@@ -241,7 +245,7 @@ game = True
 while game:
 	events = pygame.event.get()
 
-	if not IS_FINISH:
+	if not IS_FINISH and not IS_STOP:
 		if player.is_range_mode:
 			window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
 
@@ -348,6 +352,7 @@ while game:
 	if SCORE == 25:
 		IS_FINISH = True
 		you_win()
+		stop_sounds()
 	elif SCORE == 15:
 		player.is_range_mode = True
 		window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
@@ -355,6 +360,8 @@ while game:
 	if player.hp == 0:
 		IS_FINISH = True
 		you_lose()
+		stop_sounds()
+
 
 
 	for event in events:
@@ -363,11 +370,27 @@ while game:
 			pygame.quit()
 			quit()
 		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_ESCAPE:
+			if event.key == pygame.K_q:
 				exit()
-			if event.key == pygame.K_r:
-				IS_FINISH = False
+			if event.key == pygame.K_ESCAPE:
+				if not player.is_reload_fire:
+					IS_STOP = not IS_STOP
+			if event.key == pygame.K_r and IS_FINISH:
+				for sprite in secondary_sprites:
+					sprite.empty()
+				player = Player('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 10)
+				
+				y1 = 0
+				y2 = -SCREEN_HEIGHT
+				i,j = 0,0
+				SCORE = 0
 				player.hp = 10
+
+				score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
+				hp_image = load_image(hp_images_list[10 - player.hp],(100,30))
+
+				
+				IS_FINISH = False
 
 	clock.tick(FPS)
 	pygame.display.update()
