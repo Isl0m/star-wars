@@ -26,13 +26,16 @@ clock = pygame.time.Clock()
 
 # Font
 pygame.font.init()
-font = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 24)
-health = font.render("Health:", True, (255, 255, 255))
-score = font.render(f"Score: {SCORE}",True, (255, 255, 255))
-reload_text = font.render("Reloading...",True, (255, 255, 255))
-you_win_text = font.render("You Win!!!",True, (255, 255, 0))
-you_lose_text = font.render("You Lose",True, (255, 0, 0))
-range_mode_text = font.render("Range Mode!!!", True, (255, 0, 0))
+h1 = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 24)
+h2 = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 18)
+
+health = h1.render("Health:", True, (255, 255, 255))
+score = h1.render(f"Score: {SCORE}",True, (255, 255, 255))
+reload_text = h1.render("Reloading...",True, (255, 255, 255))
+you_win_text = h1.render("You Win!!!",True, (255, 255, 0))
+you_lose_text = h1.render("You Lose",True, (255, 0, 0))
+range_mode_text = h1.render("Range Mode!!!", True, (255, 0, 0))
+play_again_text = h2.render("Press r to play again", True, (255, 255, 255))
 
 # Functions
 def load_image(image, size):
@@ -44,7 +47,7 @@ def calc_text_pos(size, offset_y = 0) :
 def inc_score():
 	global score, SCORE
 	SCORE += 1
-	score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
+	score = h1.render(f"Score: {SCORE}",False, (255, 255, 255))
 def show_explosion(c):
 	exp_sound.play()
 	e = 0
@@ -55,14 +58,20 @@ def show_explosion(c):
 			window.blit(c.image, (c.rect.x , c.rect.y))
 		else:
 			e -= 1
-def you_win():
-	window.fill('black')
-	window.blit(you_win_text, calc_text_pos(you_win_text.get_size()))
-	window.blit(score, calc_text_pos(score.get_size(), 30))
-def you_lose():
-	window.fill('black')
-	window.blit(you_lose_text, calc_text_pos(you_lose_text.get_size()))
-	window.blit(score, calc_text_pos(score.get_size(), 30))
+def show_key_hint():
+	window.blit(play_again_text, calc_text_pos(play_again_text.get_size(), 60))
+def create_end_game_state(text):
+	text_size = text.get_size()
+	score_size = score.get_size()
+	def end_state():
+		window.fill('black')
+		window.blit(text, calc_text_pos(text_size))
+		window.blit(score, calc_text_pos(score_size, 30))
+		show_key_hint()
+	return end_state
+
+you_win = create_end_game_state(you_win_text)
+you_lose = create_end_game_state(you_lose_text)
 
 
 # Loading Base Images
@@ -202,7 +211,7 @@ class Player(GameSprite):
 			self.range_mode()
 
 	def range_mode(self):
-		self.is_reload_fire = False
+
 		range_bullet1 = Bullet('assets/laser.png',player.rect.centerx,player.rect.y - 70, 25, 100, 15)
 		range_bullet2 = Bullet('assets/laser.png',player.rect.centerx - 30,player.rect.y - 70, 25, 100, 15)
 		range_bullet_left = ReflectionBullet(-1,'assets/laser1.png',player.rect.centerx - 90,player.rect.y - 5, 25, 70, 15)
@@ -246,9 +255,6 @@ while game:
 	events = pygame.event.get()
 
 	if not IS_FINISH and not IS_STOP:
-		if player.is_range_mode:
-			window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
-
 		y1 += 2
 		y2 += 2
 		
@@ -313,11 +319,20 @@ while game:
 
 		if player.is_reload_fire:
 			period = time() - start_time
+			is_was_range_mode = False
 			if period >= 3:
 				player.is_reload_fire = False
 				player.fire_number = 0
+				if is_was_range_mode:
+					player.is_range_mode = True
 			else:
+				if player.is_range_mode:
+					player.is_range_mode = False
+					is_was_range_mode = True
 				window.blit(reload_text, calc_text_pos(reload_text.get_size()))
+	
+		if player.is_range_mode and not player.is_reload_fire:
+			window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
 
 		# When player's bullets and enemies collide show explosion
 		r_collides = pygame.sprite.groupcollide(reflection_bullets,enemies, True, True)
@@ -355,7 +370,6 @@ while game:
 		stop_sounds()
 	elif SCORE == 15:
 		player.is_range_mode = True
-		window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
 
 	if player.hp == 0:
 		IS_FINISH = True
@@ -386,7 +400,7 @@ while game:
 				SCORE = 0
 				player.hp = 10
 
-				score = font.render(f"Score: {SCORE}",False, (255, 255, 255))
+				score = h1.render(f"Score: {SCORE}",False, (255, 255, 255))
 				hp_image = load_image(hp_images_list[10 - player.hp],(100,30))
 
 				
