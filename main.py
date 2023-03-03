@@ -3,7 +3,11 @@ from random import randint
 
 size = (400,650)
 height = size[1]
-hp_images_list = ['assets/hp/hp1.png','assets/hp/hp2.png','assets/hp/hp3.png','assets/hp/hp4.png','assets/hp/hp5.png','assets/hp/hp6.png','assets/hp/hp7.png','assets/hp/hp8.png','assets/hp/hp9.png','assets/hp/hp10.png','assets/hp/hp11.png']
+
+# hp_images_list = ['assets/hp/hp1.png','assets/hp/hp2.png','assets/hp/hp3.png','assets/hp/hp4.png','assets/hp/hp5.png','assets/hp/hp6.png','assets/hp/hp7.png','assets/hp/hp8.png','assets/hp/hp9.png','assets/hp/hp10.png','assets/hp/hp11.png']
+hp_images_list = ['assets/hp/hp'+ str(n) +'.png' for n in range(1,12)]
+
+exp_image_list = ['assets/exp/exp0'+ str(n) + '.png' for n in range(9)]
 
 window = pygame.display.set_mode(size)
 
@@ -22,8 +26,11 @@ hp_image = load_image('assets/hp/hp1.png',(100,30))
 pygame.mixer.init()
 pygame.mixer.music.load('assets/music.mp3')
 pygame.mixer.music.play()
+
 sound = pygame.mixer.Sound('assets/sound.mp3')
 blaster_sound = pygame.mixer.Sound('assets/blaster.mp3')
+exp_sound = pygame.mixer.Sound('assets/explosion.mp3')
+
 
 clock = pygame.time.Clock()
 
@@ -52,12 +59,23 @@ class Enemy(GameSprite):
 
 		if self.rect.y > height:
 			self.kill()
+	def fire(self):
+		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 25, 100, 10)
+
+		enemy_bullets.add(bullet)
+
 
 class Bullet(GameSprite):
 	def update(self):
 		self.rect.y -= self.speed
 
 		if self.rect.y < 0:
+			self.kill()
+class DownBullet(GameSprite):
+	def update(self):
+		self.rect.y += self.speed
+
+		if self.rect.y > height:
 			self.kill()
 
 class Hero(GameSprite):
@@ -99,14 +117,14 @@ class Hero(GameSprite):
 		bullets.add(bullet_left)
 		bullets.add(bullet_right)
 
-
 hero = Hero('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 5)
 enemies = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
+enemy_bullets = pygame.sprite.Group()
 
 y1 = 0
 y2 = -height
-i = 0
+i,j = 0,0
 
 game = True
 
@@ -128,8 +146,14 @@ while game:
 	bullets.draw(window)
 	bullets.update()
 
+
 	enemies.draw(window)
 	enemies.update()
+	
+
+	enemy_bullets.draw(window)
+	enemy_bullets.update()
+
 
 	window.blit(hp_image,(5,10))
 
@@ -137,9 +161,19 @@ while game:
 	if i == 0:
 		i = 18
 		enemy = Enemy('assets/enemy.png', randint(0,7) * 100, -50, 100, 100, randint(2,3))
+		enemy.fire()
 		enemies.add(enemy)
 	else:
 		i -= 1
+
+	if j == 0:
+		for e in enemies:
+			j = 80 
+			e.fire()
+	else:
+		j -= 1
+
+	
 
 	events = pygame.event.get()
 	for event in events:
@@ -154,13 +188,27 @@ while game:
 			hero.fire()
 
 	collides = pygame.sprite.groupcollide(bullets,enemies, True, True)
-	if pygame.sprite.spritecollide(hero, enemies, True):
+	for c in collides:
+		exp_sound.play()
+		e = 0
+		for i in range(9):
+			if e == 0:
+				e = 60
+				c.image = load_image(exp_image_list[i],(100,100))
+				window.blit(c.image, (c.rect.x, c.rect.y))
+			else:
+				e -= 1
+
+	pygame.sprite.groupcollide(bullets, enemy_bullets, True, True)
+
+	if pygame.sprite.spritecollide(hero, enemies, True) or pygame.sprite.spritecollide(hero,enemy_bullets, True):
 		if hero.hp == 0:
 			hero.hp = 10
 		else:
 			hero.hp -= 1 
 
 		hp_image = load_image(hp_images_list[10 - hero.hp],(100,30))
+	
 
 	clock.tick(60)
 	pygame.display.update()
