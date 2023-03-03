@@ -11,9 +11,6 @@ SCREEN_SIZE = (400,650)
 SCORE = 0
 FPS = 30
 
-IS_FINISH = False
-
-
 # Image source lists
 hp_images_list = [f'assets/hp/hp{n}.png' for n in range(1,12)]
 exp_image_list = [f'assets/exp/exp0{n}.png' for n in range(9)]
@@ -58,7 +55,6 @@ def you_win():
 	window.fill('black')
 	window.blit(you_win_text, calc_text_pos(you_win_text.get_size()))
 	window.blit(score, calc_text_pos(score.get_size(), 30))
-
 def you_lose():
 	window.fill('black')
 	window.blit(you_lose_text, calc_text_pos(you_lose_text.get_size()))
@@ -217,49 +213,92 @@ class Enemy(GameSprite):
 		if self.rect.y > SCREEN_HEIGHT:
 			self.kill()
 	def fire(self):
-		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 20, 20, 18,  player.rect.centerx + 20, player.rect.centery)
-		enemy_bullets.add(bullet)
+		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 20, 20, 18,  Game.player.rect.centerx + 20, Game.player.rect.centery)
+		Game.enemy_bullets.add(bullet)
 
 		# angle = bullet.calc_angle(bullet.rect.x, bullet.rect.y, player.rect.centerx + 20, player.rect.centery)
 		# bullet.image = pygame.transform.rotate(bullet.image, -angle)
 
 
-player = Player('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 10)
-enemies = pygame.sprite.Group()
-reflection_bullets = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
-enemy_bullets = pygame.sprite.Group()
+class Game():
+	def __init__(self):
+		self.player = Player('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 10)
+		self.enemies = pygame.sprite.Group()
+		self.reflection_bullets = pygame.sprite.Group()
+		self.bullets = pygame.sprite.Group()
+		self.enemy_bullets = pygame.sprite.Group()
 
-secondary_sprites = [enemies, enemy_bullets, bullets, reflection_bullets]
+		self.secondary_sprites = [self.enemies, self.enemy_bullets, self.bullets, self.reflection_bullets]
 
-y1 = 0
-y2 = -SCREEN_HEIGHT
-i,j = 0,0
+		self.y1 = 0
+		self.y2 = -SCREEN_HEIGHT
+		self.i,self.j = 0,0
 
-game = True
-
-while game:
-	events = pygame.event.get()
-
-	if not IS_FINISH:
-		if player.is_range_mode:
-			window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
-
-		y1 += 2
-		y2 += 2
+		self.game = True
+		self.is_finish = False
+		self.events = pygame.event.get()
 		
-		window.blit(bg,(0,y1))
-		window.blit(bg,(0,y2))
+	def main(self):
+		if not self.is_finish:
+			self.run()
 
-		if y1 > SCREEN_HEIGHT:
-			y1 = -SCREEN_HEIGHT
-		if y2 > SCREEN_HEIGHT:
-			y2 = -SCREEN_HEIGHT
+	def run(self):
+		self.bg_init()
 
-		player.show()
-		player.move()
+		self.player.show()
+		self.player.move()
 
-		for bullet in reflection_bullets:
+		if self.player.is_range_mode:
+			window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
+	
+		self.secondary_sprite_init()
+
+		window.blit(hp_image,(5,15))
+		window.blit(health, (10, 0))
+		window.blit(score, (SCREEN_WIDTH - 120, 0))
+
+		self.enemies_init()
+
+		for event in self.events:
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_SPACE:
+					if self.player.fire_number < 10 and not self.player.is_reload_fire:
+						self.player.fire()
+					if self.player.fire_number >= 10:
+						start_time = time()
+						self.player.is_reload_fire = True
+			if event.type == pygame.MOUSEBUTTONDOWN:
+				self.player.fire()
+
+		if self.player.is_reload_fire:
+			period = time() - start_time
+			if period >= 3:
+				self.player.is_reload_fire = False
+				self.player.fire_number = 0
+			else:
+				window.blit(reload_text, calc_text_pos(reload_text.get_size()))
+		
+		
+		self.player_bullets_enemy_collide()
+		
+		self.bullets_collide()
+
+		self.player_gets_damage()
+
+	def bg_init(self): 
+		self.y1 += 2
+		self.y2 += 2
+		
+		window.blit(bg,(0,self.y1))
+		window.blit(bg,(0,self.y2))
+
+		if self.y1 > SCREEN_HEIGHT:
+			self.y1 = -SCREEN_HEIGHT
+		if self.y2 > SCREEN_HEIGHT:
+			self.y2 = -SCREEN_HEIGHT
+
+	def secondary_sprite_init(self):
+		for bullet in self.reflection_bullets:
 			if bullet.rect.x >= SCREEN_WIDTH - 70:
 				bullet.sign = -1
 				bullet.image = pygame.transform.rotate(bullet.image, 90)
@@ -270,104 +309,57 @@ while game:
 				bullet.image = pygame.transform.rotate(bullet.image, -90)
 
 
-		for sprite in secondary_sprites:
+		for sprite in self.secondary_sprites:
 			sprite.draw(window)
 			sprite.update()
 
-		window.blit(hp_image,(5,15))
-		window.blit(health, (10, 0))
-		window.blit(score, (SCREEN_WIDTH - 120, 0))
-
+	def enemies_init(self):
 		# Generate Enemies
+		i = self.i
+		j = self.j
 		if i == 0:
 			i = 15
 			enemy = Enemy('assets/enemy.png', randint(0,3) * 100, -50, 100, 100, randint(5,6))
 			enemy.fire()
-			enemies.add(enemy)
+			self.enemies.add(enemy)
 		else:
 			i -= 1
 
 		# Make enemies fire
 		if j == 0:
-			for e in enemies:
+			for e in self.enemies:
 				j = 60
 				e.fire()
 		else:
 			j -= 1
 
-		
-		for event in events:
-			if event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_SPACE:
-					if player.fire_number < 10 and not player.is_reload_fire:
-						player.fire()
-					if player.fire_number >= 10:
-						start_time = time()
-						player.is_reload_fire = True
-			if event.type == pygame.MOUSEBUTTONDOWN:
-				player.fire()
-
-		if player.is_reload_fire:
-			period = time() - start_time
-			if period >= 3:
-				player.is_reload_fire = False
-				player.fire_number = 0
-			else:
-				window.blit(reload_text, calc_text_pos(reload_text.get_size()))
-
-		# When player's bullets and enemies collide show explosion
-		r_collides = pygame.sprite.groupcollide(reflection_bullets,enemies, True, True)
+	def player_bullets_enemy_collide(self):
+		r_collides = pygame.sprite.groupcollide(self.reflection_bullets,self.enemies, True, True)
 		for c in r_collides:
 			inc_score()
 			show_explosion(c)
 
-		collides = pygame.sprite.groupcollide(bullets,enemies, True, True)
+		collides = pygame.sprite.groupcollide(self.bullets,self.enemies, True, True)
 		for c in collides:
 			inc_score()
 			show_explosion(c)
 
-		# When player's and enemies bullets collide remove both
-		pygame.sprite.groupcollide(reflection_bullets, enemy_bullets, True, True)
-		pygame.sprite.groupcollide(bullets, enemy_bullets, True, True)
+	def bullets_collide(self):
+		pygame.sprite.groupcollide(self.reflection_bullets, self.enemy_bullets, True, True)
+		pygame.sprite.groupcollide(self.bullets, self.enemy_bullets, True, True)
 
-		# When player gets damage
-		if pygame.sprite.spritecollide(player, enemies, True) or pygame.sprite.spritecollide(player, enemy_bullets, True):
+	def player_gets_damage(self):
+		player = self.player
+		if pygame.sprite.spritecollide(player, self.enemies, True) or pygame.sprite.spritecollide(player, self.enemy_bullets, True):
 			exp_sound.play()
 			e = 0
 			for i in range(9):
 				if e == 0:
 					e = 50
-					enemy_bullets.image = load_image(exp_image_list[i],(100,100))
-					window.blit(enemy_bullets.image, (player.rect.x + 30, player.rect.y))
+					self.enemy_bullets.image = load_image(exp_image_list[i],(100,100))
+					window.blit(self.enemy_bullets.image, (player.rect.x + 30, player.rect.y))
 				else:
 					e -= 1
 
 			player.hp -= 1 
 			hp_image = load_image(hp_images_list[10 - player.hp],(100,30))
-			
-	if SCORE == 25:
-		IS_FINISH = True
-		you_win()
-	elif SCORE == 15:
-		player.is_range_mode = True
-		window.blit(range_mode_text, calc_text_pos(range_mode_text.get_size()))
-
-	if player.hp == 0:
-		IS_FINISH = True
-		you_lose()
-
-
-	for event in events:
-		if event.type == pygame.QUIT:
-			game = False
-			pygame.quit()
-			quit()
-		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_ESCAPE:
-				exit()
-			if event.key == pygame.K_r:
-				IS_FINISH = False
-				player.hp = 10
-
-	clock.tick(FPS)
-	pygame.display.update()
