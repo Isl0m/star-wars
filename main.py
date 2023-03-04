@@ -12,7 +12,7 @@ SCORE = 0
 FPS = 30
 
 IS_FINISH = False
-IS_STOP = False
+IS_STOP = True
 
 
 # Image source lists
@@ -36,6 +36,8 @@ you_win_text = h1.render("You Win!!!",True, (255, 255, 0))
 you_lose_text = h1.render("You Lose",True, (255, 0, 0))
 range_mode_text = h1.render("Range Mode!!!", True, (255, 0, 0))
 play_again_text = h2.render("Press r to play again", True, (255, 255, 255))
+press_to_continue_text = h2.render("Press Esc to play", True, (255, 255, 255))
+
 
 # Functions
 def load_image(image, size):
@@ -376,7 +378,8 @@ while game:
 		you_lose()
 		stop_sounds()
 
-
+	if IS_STOP:
+		window.blit(press_to_continue_text, calc_text_pos(press_to_continue_text.get_size()))
 
 	for event in events:
 		if event.type == pygame.QUIT:
