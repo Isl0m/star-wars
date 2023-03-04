@@ -13,6 +13,8 @@ FPS = 30
 
 IS_FINISH = False
 IS_STOP = True
+# PATH = '/data/data/org.test.myapp/files/app'
+PATH = ''
 
 
 # Image source lists
@@ -26,8 +28,8 @@ clock = pygame.time.Clock()
 
 # Font
 pygame.font.init()
-h1 = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 24)
-h2 = pygame.font.Font('assets/Heavy Data Nerd Font Complete.ttf', 18)
+h1 = pygame.font.Font(PATH + 'assets/Heavy Data Nerd Font Complete.ttf', 24)
+h2 = pygame.font.Font(PATH + 'assets/Heavy Data Nerd Font Complete.ttf', 18)
 
 health = h1.render("Health:", True, (255, 255, 255))
 score = h1.render(f"Score: {SCORE}",True, (255, 255, 255))
@@ -41,7 +43,7 @@ press_to_continue_text = h2.render("Press Esc to play", True, (255, 255, 255))
 
 # Functions
 def load_image(image, size):
-		return pygame.transform.scale(pygame.image.load(image), size)
+		return pygame.transform.scale(pygame.image.load(PATH + image), size)
 def calc_text_pos(size, offset_y = 0) :
 	x = (SCREEN_WIDTH / 2) - (size[0] / 2)
 	y = SCREEN_HEIGHT / 2 + offset_y
@@ -83,12 +85,12 @@ hp_image = load_image('assets/hp/hp1.png',(100,30))
 
 # Music
 pygame.mixer.init()
-pygame.mixer.music.load('assets/music.mp3')
+pygame.mixer.music.load(PATH + 'assets/music.mp3')
 pygame.mixer.music.play()
 
-sound = pygame.mixer.Sound('assets/sound.mp3')
-blaster_sound = pygame.mixer.Sound('assets/blaster.mp3')
-exp_sound = pygame.mixer.Sound('assets/explosion.mp3')
+sound = pygame.mixer.Sound(PATH + 'assets/sound.mp3')
+blaster_sound = pygame.mixer.Sound(PATH + 'assets/blaster.mp3')
+exp_sound = pygame.mixer.Sound(PATH + 'assets/explosion.mp3')
 all_sounds = [sound,blaster_sound,exp_sound]
 
 def stop_sounds():
@@ -151,8 +153,8 @@ class DownBullet(GameSprite):
 		dy = target_y - y
 		dx = target_x - x
 
-		rad = atan2(-dy, dx)
-		rad = rad % (2*pi)
+		rad = atan2(dy, dx)
+		# rad = rad % (2*pi)
 
 		angle = degrees(rad)
 
@@ -235,8 +237,8 @@ class Enemy(GameSprite):
 		bullet = DownBullet('assets/enemy_laser.png', self.rect.centerx - 10, self.rect.y + 50, 20, 20, 18,  player.rect.centerx + 20, player.rect.centery)
 		enemy_bullets.add(bullet)
 
-		# angle = bullet.calc_angle(bullet.rect.x, bullet.rect.y, player.rect.centerx + 20, player.rect.centery)
-		# bullet.image = pygame.transform.rotate(bullet.image, -angle)
+		angle = bullet.calc_angle(bullet.rect.x, bullet.rect.y, player.rect.centerx + 20, player.rect.centery)
+		bullet.image = pygame.transform.rotate(bullet.image, 90-angle)
 
 
 player = Player('assets/ship1.png','assets/ship2.png', 125, 500, 150, 150, 10)
@@ -411,3 +413,4 @@ while game:
 
 	clock.tick(FPS)
 	pygame.display.update()
+
