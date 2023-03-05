@@ -1,6 +1,6 @@
 import pygame
 from random import randint
-from math import sin, cos, atan2, degrees, pi
+from math import sin, cos, atan2, degrees 
 from time import time
 
 # Constants
@@ -13,8 +13,8 @@ FPS = 30
 
 IS_FINISH = False
 IS_STOP = True
-# PATH = '/data/data/org.test.myapp/files/app'
-PATH = ''
+PATH = '/data/data/org.test.myapp/files/app/'
+# PATH = ''
 
 
 # Image source lists
@@ -390,7 +390,9 @@ while game:
 			quit()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_q:
-				exit()
+				game = False
+				pygame.quit()
+				quit()
 			if event.key == pygame.K_ESCAPE:
 				if not player.is_reload_fire:
 					IS_STOP = not IS_STOP
